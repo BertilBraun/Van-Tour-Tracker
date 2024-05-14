@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:latlong2/latlong.dart';
-import 'package:helloworld/util.dart';
+import 'package:helloworld/load_and_save.dart';
 
 const List<String> ASSET_FILES_FOR_TYPES = [
   'assets/heart.png',
@@ -42,8 +42,6 @@ class MarkerData {
   }
 
   static MarkerData fromString(String text) {
-    if (text == '') return empty(const LatLng(0, 0));
-
     Map<String, String> data = {};
     final labels = [
       'LOCATION:',

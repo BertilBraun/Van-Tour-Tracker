@@ -8,7 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:helloworld/marker_dialog.dart';
 import 'package:helloworld/marker_data.dart';
-import 'package:helloworld/util.dart';
+import 'package:helloworld/settings.dart';
+import 'package:helloworld/load_and_save.dart';
+import 'package:helloworld/route_fetching.dart';
 
 void main() => runApp(const MainApp());
 
@@ -46,6 +48,16 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _startLocationListener();
+  }
+
+  @override
+  void dispose() {
+    locationService.stopListening();
+    super.dispose();
+  }
+
+  void _startLocationListener() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       locationService.startListening(
         (loc) {
@@ -71,57 +83,23 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    locationService.stopListening();
-    super.dispose();
-  }
-
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? markersData = prefs.getString('markers');
-    final String? polylinesData = prefs.getString('polylines');
+    // first parse the markerDatas so that they are available once the markers are created
+    markerData = await loadMarkerData();
 
-    if (markersData != null) {
-      // first parse the markerDatas so that they are available once the markers are created
-      parsePoints(markersData).forEach((point) {
-        markerData[point] =
-            MarkerData.fromString(prefs.getString(pointToString(point)) ?? '');
-      });
+    final newMarkers = await loadMarkers(createMarker);
+    final newPolylines = await loadPolylines(createPolyline);
 
-      var newMarkers = parsePoints(markersData).map(createMarker).toList();
-
-      setState(() {
-        markers = newMarkers;
-      });
-    }
-
-    if (polylinesData != null) {
-      var newPolylines = polylinesData
-          .split('|')
-          .map(parsePoints)
-          .map(createPolyline)
-          .toList();
-      setState(() {
-        polylines = newPolylines;
-      });
-    }
+    setState(() {
+      markers = newMarkers;
+      polylines = newPolylines;
+    });
   }
 
   Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-    String stringMarkers =
-        markers.map((marker) => marker.point).map(pointToString).join(';');
-    String stringPolylines = polylines
-        .map((polyline) => polyline.points.map(pointToString).join(';'))
-        .join('|'); // Use a different delimiter to separate each polyline
-
-    markerData.forEach((point, data) {
-      prefs.setString(pointToString(point), data.toString());
-    });
-
-    await prefs.setString('markers', stringMarkers);
-    await prefs.setString('polylines', stringPolylines);
+    await saveMarkerData(markerData);
+    await saveMarkers(markers);
+    await savePolylines(polylines);
   }
 
   Polyline createPolyline(List<LatLng> points) => Polyline(

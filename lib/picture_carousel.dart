@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 
-import 'package:helloworld/util.dart';
+import 'package:helloworld/settings.dart';
 
 class PictureCarousel extends StatelessWidget {
   final List<File> pics;
