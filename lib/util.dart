@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
+import 'package:location/location.dart';
 
 const bool IS_WEB_BUILD = true;
 const String GEOAPIFY_API_KEY = "225dc37a5e42447c838ec18e43b40b5d";
@@ -34,4 +35,28 @@ Future<List<LatLng>> fetchRoute(LatLng origin, LatLng destination) async {
     points.insertAll(1, routeCoordinates);
   }
   return points;
+}
+
+Future<LatLng?> getLocation({bool showPrompt = false}) async {
+  final Location location = Location();
+
+  PermissionStatus permission = await location.hasPermission();
+  if (permission == PermissionStatus.denied) {
+    permission = await location.requestPermission();
+    if (permission != PermissionStatus.granted &&
+        permission != PermissionStatus.grantedLimited) {
+      if (showPrompt) {
+        // TODO show a popup or sth like that to ask the user to allow the location access to the app
+      }
+      return null;
+    }
+  }
+
+  final LocationData currentLocation = await location.getLocation();
+
+  if (currentLocation.latitude == null || currentLocation.longitude == null) {
+    return null;
+  }
+
+  return LatLng(currentLocation.latitude!, currentLocation.longitude!);
 }
