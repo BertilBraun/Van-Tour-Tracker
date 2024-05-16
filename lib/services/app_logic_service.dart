@@ -1,14 +1,17 @@
 import 'package:flutter/foundation.dart';
+import 'package:helloworld/data/current_state.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:helloworld/data/marker_data.dart';
-import 'package:helloworld/data/app_data.dart';
-import 'package:helloworld/data/route_data.dart';
+import 'package:helloworld/data/marker.dart';
+import 'package:helloworld/data/tour.dart';
+import 'package:helloworld/data/route.dart';
 
 import 'package:helloworld/services/routing_service.dart';
 
 class AppLogicService extends ChangeNotifier {
-  AppData appData = AppData.empty();
+  CurrentState currentState = CurrentState.empty();
+
+  Tour currentTour = Tour.empty();
   int markerInsertIndex = -1;
   bool isFetchingRoute = false;
 
@@ -17,11 +20,13 @@ class AppLogicService extends ChangeNotifier {
   }
 
   Future<void> loadData() async {
-    appData = await AppData.load();
+    currentState = await CurrentState.load();
+    currentTour = await Tour.load(currentState.currentTourName);
     _afterAppDataUpdate();
   }
 
-  Future<void> saveData() => appData.save();
+  Future<void> saveData() =>
+      currentTour.save().then((value) => currentState.save());
 
   Future<void> addMarker(LatLng position) async {
     if (isFetchingRoute) {
@@ -29,7 +34,7 @@ class AppLogicService extends ChangeNotifier {
     }
 
     // first add the markerData to the map, as createMarker accesses that information
-    appData.markers[position] = MarkerData.empty(position);
+    currentTour.markers[position] = Marker.empty(position);
 
     if (markerInsertIndex == -1) {
       await _addMarkerAtEnd(position);
@@ -41,34 +46,34 @@ class AppLogicService extends ChangeNotifier {
   }
 
   Future<void> onDelete(LatLng position) async {
-    final int index = appData.markerIndex(position);
+    final int index = currentTour.markerIndex(position);
 
-    List<Route> updatedRoutes = List.from(appData.routes);
+    List<Route> updatedRoutes = List.from(currentTour.routes);
     updatedRoutes.removeWhere((route) => route.coordinates.contains(position));
 
-    if (index > 0 && index + 1 < appData.ordering.length) {
+    if (index > 0 && index + 1 < currentTour.ordering.length) {
       // Recalculate polyline between the two markers adjacent to the removed marker
-      final LatLng origin = appData.ordering[index - 1];
-      final LatLng destination = appData.ordering[index + 1];
+      final LatLng origin = currentTour.ordering[index - 1];
+      final LatLng destination = currentTour.ordering[index + 1];
       updatedRoutes.add(await _fetchRoute(origin, destination));
     }
 
-    appData.ordering.removeAt(index);
-    appData.markers.remove(position);
-    appData.routes = updatedRoutes;
+    currentTour.ordering.removeAt(index);
+    currentTour.markers.remove(position);
+    currentTour.routes = updatedRoutes;
 
     _afterAppDataUpdate();
   }
 
-  void onUpdate(LatLng position, MarkerData newData) {
-    appData.markers[position] = newData;
+  void onUpdate(LatLng position, Marker newData) {
+    currentTour.markers[position] = newData;
     _afterAppDataUpdate();
   }
 
   void onSelectAfter(LatLng position) {
-    markerInsertIndex = appData.markerIndex(position);
+    markerInsertIndex = currentTour.markerIndex(position);
     // Sentinel. If the markerInstertIndex is the last marker then it is the same as if no insert marker is selceted. This makes edge cases in the adding of new markers easier.
-    if (markerInsertIndex == appData.ordering.length - 1) {
+    if (markerInsertIndex == currentTour.ordering.length - 1) {
       markerInsertIndex = -1;
     }
   }
@@ -94,30 +99,31 @@ class AppLogicService extends ChangeNotifier {
   }
 
   Future<void> _addMarkerAtEnd(LatLng position) async {
-    appData.ordering.add(position);
+    currentTour.ordering.add(position);
 
-    if (appData.ordering.length < 2) {
+    if (currentTour.ordering.length < 2) {
       return; // Not enough markers to create a route
     }
 
     // connect the last two markers with a route
-    final LatLng origin = appData.ordering[appData.ordering.length - 2];
-    final LatLng destination = appData.ordering[appData.ordering.length - 1];
+    final LatLng origin = currentTour.ordering[currentTour.ordering.length - 2];
+    final LatLng destination =
+        currentTour.ordering[currentTour.ordering.length - 1];
 
     await _fetchAndAddRoute(origin, destination);
   }
 
   Future<void> _addMarkerAtInsertIndex(LatLng position) async {
-    final LatLng originalStart = appData.ordering[markerInsertIndex];
-    final LatLng originalEnd = appData.ordering[markerInsertIndex + 1];
+    final LatLng originalStart = currentTour.ordering[markerInsertIndex];
+    final LatLng originalEnd = currentTour.ordering[markerInsertIndex + 1];
 
     // remove the original connection where we want to insert the marker in between
-    appData.routes.removeWhere((route) =>
+    currentTour.routes.removeWhere((route) =>
         route.coordinates.contains(originalStart) &&
         route.coordinates.contains(originalEnd));
 
     // insert the marker at the appropriate position
-    appData.ordering.insert(markerInsertIndex + 1, position);
+    currentTour.ordering.insert(markerInsertIndex + 1, position);
 
     // add the two connections to the old markers
     await _fetchAndAddRoute(originalStart, position);
@@ -126,9 +132,9 @@ class AppLogicService extends ChangeNotifier {
     markerInsertIndex++;
   }
 
-  Future<AppData> _fetchAndAddRoute(LatLng origin, LatLng destination) async {
-    appData.routes.add(await _fetchRoute(origin, destination));
-    return appData;
+  Future<Tour> _fetchAndAddRoute(LatLng origin, LatLng destination) async {
+    currentTour.routes.add(await _fetchRoute(origin, destination));
+    return currentTour;
   }
 
   Future<Route> _fetchRoute(LatLng origin, LatLng destination) async {

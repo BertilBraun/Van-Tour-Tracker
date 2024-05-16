@@ -1,42 +1,44 @@
-import 'package:latlong2/latlong.dart';
-import 'package:location/location.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 class LocationService extends ChangeNotifier {
-  final Location location = Location();
-  Stream<LatLng>? locationStream;
+  StreamSubscription? locationStream;
   LatLng? previousLocation;
   LatLng? currentLocation;
 
   LocationService(BuildContext context) {
-    startListening((loc) {
-      previousLocation = currentLocation;
-      currentLocation = loc;
-      notifyListeners();
-    }, context);
+    startListening(_listenerCallback, context);
+    getLastKnownPosition().then(_listenerCallback);
+  }
+
+  void _listenerCallback(LatLng? position) {
+    previousLocation = currentLocation;
+    currentLocation = position;
+    notifyListeners();
   }
 
   Future<void> checkPermissions(BuildContext context, bool showPopup) async {
     print('Checking Permission');
 
-    bool serviceEnabled = await location.serviceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) {
-        if (showPopup) {
-          _showLocationServiceDialog(context);
-        }
-        print('Service not enabled');
-        return; // Exit if location services are not enabled even after prompt.
+      if (showPopup) {
+        _showLocationServiceDialog(context);
       }
+      print('Service not enabled');
+      return; // Exit if location services are not enabled even after prompt.
     }
 
-    PermissionStatus permission = await location.hasPermission();
-    if (permission == PermissionStatus.denied) {
-      permission = await location.requestPermission();
-      if (permission != PermissionStatus.granted &&
-          permission != PermissionStatus.grantedLimited) {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.always &&
+          permission != LocationPermission.whileInUse) {
         if (showPopup) {
           _showPermissionRequestDialog(context);
         }
@@ -44,28 +46,43 @@ class LocationService extends ChangeNotifier {
         return; // Exit if permissions are not granted.
       }
     }
+    print('All Permissions granted');
+  }
+
+  Future<LatLng?> getLastKnownPosition() async {
+    final position = await Geolocator.getLastKnownPosition();
+    if (position == null) {
+      return null;
+    }
+    return toLatLng(position);
+  }
+
+  Future<LatLng?> getLocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      return toLatLng(position);
+    } catch (e) {
+      return null;
+    }
   }
 
   void startListening(Function(LatLng) onUpdate, BuildContext context) async {
     // Ensure that location service is enabled and permissions are granted.
     await checkPermissions(context, false);
 
-    locationStream = location.onLocationChanged.map((locationData) {
-      if (locationData.latitude != null && locationData.longitude != null) {
-        return LatLng(locationData.latitude!, locationData.longitude!);
-      } else {
-        throw Exception('Invalid location data');
-      }
-    });
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 100,
+    );
 
-    locationStream!.listen(onUpdate, onError: (error) {
-      // Handle error or log it
-      print('Location Stream Error: $error');
-    });
+    locationStream =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .map(toLatLng)
+            .listen(onUpdate);
   }
 
   void stopListening() {
-    locationStream?.listen(null).cancel(); // Stop listening to location changes
+    locationStream?.cancel(); // Stop listening to location changes
   }
 
   @override
@@ -73,6 +90,9 @@ class LocationService extends ChangeNotifier {
     stopListening();
     super.dispose();
   }
+
+  LatLng toLatLng(Position position) =>
+      LatLng(position.latitude, position.longitude);
 
   void _showLocationServiceDialog(BuildContext context) {
     showDialog(

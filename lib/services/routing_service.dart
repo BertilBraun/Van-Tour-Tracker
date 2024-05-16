@@ -1,10 +1,11 @@
 import 'dart:convert';
 
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:helloworld/settings.dart';
-import 'package:helloworld/data/route_data.dart';
+import 'package:helloworld/data/route.dart';
 
 class RoutingService {
   static Future<Route> fetchRoute(LatLng origin, LatLng destination) async {
@@ -12,7 +13,8 @@ class RoutingService {
         'https://api.openrouteservice.org/v2/directions/driving-car?api_key=$OPEN_ROUTE_SERVICE_API_KEY&start=${origin.longitude},${origin.latitude}&end=${destination.longitude},${destination.latitude}'));
 
     List<LatLng> points = [origin, destination];
-    double distance = 0; // TODO calculate air distance
+    double distance = Geolocator.distanceBetween(origin.latitude,
+        origin.longitude, destination.latitude, destination.longitude);
 
     if (response.statusCode == 200) {
       final Map data = jsonDecode(response.body);

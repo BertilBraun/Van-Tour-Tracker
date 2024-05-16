@@ -2,24 +2,21 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:helloworld/data/app_data.dart';
+import 'package:provider/provider.dart';
+import 'package:helloworld/data/tour.dart';
+import 'package:helloworld/services/app_logic_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 
 class SettingsDialog extends StatelessWidget {
-  final Future Function() loadFromPrefs;
-  final Future Function() saveToPrefs;
-  final AppData appData;
+  late AppLogicService appLogic;
 
-  const SettingsDialog({
-    super.key,
-    required this.loadFromPrefs,
-    required this.saveToPrefs,
-    required this.appData,
-  });
+  SettingsDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
+    appLogic = context.watch<AppLogicService>();
+
     return AlertDialog(
       title: const Text("Settings"),
       content: Column(
@@ -40,6 +37,43 @@ class SettingsDialog extends StatelessWidget {
             icon: const Icon(Icons.delete),
             label: const Text("Delete all Entries"),
           ),
+          const SizedBox(height: 8),
+          const Text('All your saved Tours'),
+          Column(
+            children: appLogic.currentState.allTourNames
+                .map((tourName) => Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              labelText: tourName,
+                            ),
+                            onChanged: (value) =>
+                                onChangeTourName(tourName, value),
+                          ),
+                        ),
+                        if (tourName != appLogic.currentState.currentTourName)
+                          IconButton(
+                            onPressed: () => onSelectTour(tourName),
+                            icon: const Icon(Icons.view_carousel),
+                          ),
+                        if (tourName != appLogic.currentState.currentTourName)
+                          IconButton(
+                            onPressed: () => onDeleteTour(tourName),
+                            icon: const Icon(Icons.delete),
+                          ),
+                        if (tourName == appLogic.currentState.currentTourName)
+                          const Icon(Icons.stay_current_portrait)
+                      ],
+                    ))
+                .toList(),
+          ),
+          TextButton.icon(
+            onPressed: () => onNewTour(),
+            icon: const Icon(Icons.add),
+            label: const Text('Create a new Tour'),
+          )
         ],
       ),
     );
@@ -54,13 +88,13 @@ class SettingsDialog extends StatelessWidget {
     if (files != null && files.count > 0) {
       final jsonData = await File(files.paths[0]!).readAsString();
       final allData = jsonDecode(jsonData);
-      await AppData.fromMap(allData).save();
-      await loadFromPrefs();
+      await Tour.fromMap(allData).save();
+      await appLogic.loadData();
     }
   }
 
   Future<void> onExport() async {
-    final allData = appData.toMap();
+    final allData = appLogic.currentTour.toMap();
     final jsonData = jsonEncode(allData);
 
     String? outputFile = await FilePicker.platform.saveFile(
@@ -74,9 +108,59 @@ class SettingsDialog extends StatelessWidget {
   }
 
   Future<void> onDeleteAll() async {
-    final prefs = await SharedPreferences.getInstance();
+    appLogic.currentTour = Tour.empty();
+    await appLogic.saveData();
+    await appLogic.loadData();
+  }
 
-    await prefs.clear();
-    await loadFromPrefs();
+  String _getSaveName() {
+    if (!appLogic.currentState.allTourNames.contains(Tour.DEFAULT_SAVE_NAME)) {
+      return Tour.DEFAULT_SAVE_NAME;
+    }
+
+    for (int i = 1; i < 1000; i++) {
+      if (!appLogic.currentState.allTourNames
+          .contains(Tour.DEFAULT_SAVE_NAME + i.toString())) {
+        return Tour.DEFAULT_SAVE_NAME + i.toString();
+      }
+    }
+
+    return 'Error: You are crazy.. Stop creating so many Tours..';
+  }
+
+  Future<void> onNewTour() async {
+    await appLogic.saveData();
+    final newName = _getSaveName();
+    appLogic.currentTour = Tour.empty(name: newName);
+    appLogic.currentState.allTourNames.add(newName);
+    appLogic.currentState.currentTourName = newName;
+    await appLogic.saveData();
+    await appLogic.loadData();
+  }
+
+  Future<void> onSelectTour(String tourName) async {
+    appLogic.currentState.currentTourName = tourName;
+    await appLogic.saveData();
+    await appLogic.loadData();
+  }
+
+  Future<void> onChangeTourName(String oldName, String newName) async {
+    int index = appLogic.currentState.allTourNames.indexOf(oldName);
+    appLogic.currentState.allTourNames[index] = newName;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(newName, prefs.getString(oldName)!);
+    await prefs.setString(oldName, ''); // delete the old tour json data
+
+    await appLogic.saveData();
+    await appLogic.loadData();
+  }
+
+  Future<void> onDeleteTour(String tourName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tourName, ''); // delete the tour json data
+    appLogic.currentState.allTourNames.remove(tourName);
+    await appLogic.saveData();
+    await appLogic.loadData();
   }
 }

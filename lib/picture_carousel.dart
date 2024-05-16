@@ -18,7 +18,7 @@ class PictureCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pics.isEmpty) {
-      return const Center(child: Text("No Picture added."));
+      return Text("No Picture added.");
     }
 
     final List<Widget> imageSliders = pics
@@ -28,8 +28,9 @@ class PictureCarousel extends StatelessWidget {
                 child: ClipRRect(
                     borderRadius: BorderRadius.all(Radius.circular(5.0)),
                     child: Stack(
+                      alignment: AlignmentDirectional.bottomEnd,
                       children: <Widget>[
-                        Image.file(item, fit: BoxFit.cover, width: 1000.0),
+                        image(item),
                         Positioned(
                           bottom: 0.0,
                           left: 0.0,
@@ -57,6 +58,9 @@ class PictureCarousel extends StatelessWidget {
                             ),
                           ),
                         ),
+                        IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => onPicRemove(item)),
                       ],
                     )),
               ),
@@ -71,46 +75,22 @@ class PictureCarousel extends StatelessWidget {
       ),
       items: imageSliders,
     );
-
-    return CarouselSlider(
-      options: CarouselOptions(
-        autoPlay: true,
-        aspectRatio: 2.0,
-        enlargeCenterPage: true,
-      ),
-      items: pics.map((file) {
-        return Container(
-          margin: const EdgeInsets.all(5.0),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.all(Radius.circular(5.0)),
-            child: Stack(
-              alignment: AlignmentDirectional.bottomEnd,
-              children: [
-                image(file),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => onPicRemove(file),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
   }
 
   Image image(File file) {
     if (IS_WEB_BUILD) {
       return Image.network(
-        'https://m.media-amazon.com/images/I/41t0VHvBEwL.jpg',
+        'https://img.freepik.com/fotos-kostenlos/niedlicher-welpe-des-cavalier-king-charles-spaniel-der-auf-einem-baumstamm-liegt_384344-5181.jpg?w=1060&t=st=1715877344~exp=1715877944~hmac=f2ca9e7ee7c13437d99f5d68a49c8a0cf072c94a45b647b2ab0fca8094454bba',
         fit: BoxFit.cover,
         width: 1000,
+        //MediaQuery.of(context).size.width,
       );
     } else {
       return Image.file(
         file,
         fit: BoxFit.cover,
         width: 1000,
+        //MediaQuery.of(context).size.height,
       );
     }
   }

@@ -24,7 +24,7 @@ class Route {
   static Route fromMap(Map<String, dynamic> data) => Route(
         pointFromString(data['origin']),
         pointFromString(data['destination']),
-        data['coordinates'].map(pointFromString).toList(),
+        List<String>.from(data['coordinates']).map(pointFromString).toList(),
         data['distance'],
       );
 }

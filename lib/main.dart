@@ -8,7 +8,7 @@ import 'package:helloworld/settings.dart';
 import 'package:helloworld/marker_dialog.dart';
 import 'package:helloworld/settings_dialog.dart';
 
-import 'package:helloworld/data/app_data.dart';
+import 'package:helloworld/data/tour.dart';
 
 import 'package:helloworld/services/location_service.dart';
 import 'package:helloworld/services/app_logic_service.dart';
@@ -32,7 +32,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       title: 'Travel Tales',
       home: MapScreen(
-        appData: appLogic.appData,
+        currentTour: appLogic.currentTour,
         appLogic: appLogic,
         locationService: locationService,
       ),
@@ -42,40 +42,45 @@ class MainApp extends StatelessWidget {
 }
 
 class MapScreen extends StatelessWidget {
-  final AppData appData;
+  final Tour currentTour;
   final AppLogicService appLogic;
   final LocationService locationService;
 
   MapScreen({
     super.key,
-    required this.appData,
+    required this.currentTour,
     required this.appLogic,
     required this.locationService,
-  }) {
-    if (locationService.previousLocation == null &&
-        locationService.currentLocation != null) {
-      // If we just now found a location, then zoom the map to that location
-      mapController.move(locationService.currentLocation!, 12);
-    }
-  }
+  });
 
   final MapController mapController = MapController();
 
   @override
   Widget build(BuildContext context) {
+    if (locationService.previousLocation == null &&
+        locationService.currentLocation != null) {
+      // If we just now found a location, then zoom the map to that location
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        mapController.move(locationService.currentLocation!, 12);
+        locationService.previousLocation = locationService.currentLocation;
+      });
+    }
+
     void showMarker(LatLng position) => showDialog(
           context: context,
           builder: (context) {
             return MarkerDialog(
               position: position,
-              markerData: appData.markers[position]!,
-              onUpdate: (newData) => appLogic.onUpdate(position, newData),
+              marker: currentTour.markers[position]!,
+              onUpdate: (newData) {
+                appLogic.onUpdate(position, newData);
+              },
               onDelete: () {
-                Navigator.pop(context);
+                Navigator.pop(context); // close the dialog
                 appLogic.onDelete(position);
               },
               onSelectAfter: () {
-                Navigator.pop(context);
+                Navigator.pop(context); // close the dialog
                 appLogic.onSelectAfter(position);
               },
             );
@@ -91,14 +96,14 @@ class MapScreen extends StatelessWidget {
         );
 
     Marker createMarker(LatLng position) => Marker(
-          key: ObjectKey(appData.markers[position]),
+          key: ObjectKey(currentTour.markers[position]),
           point: position,
           child: IconButton(
-            icon: Image.asset(appData.markers[position]!.assetFileForType),
+            icon: Image.asset(currentTour.markers[position]!.assetFileForType),
             onPressed: () => showMarker(position),
           ),
-          width: appData.markers[position]!.type == 2 ? 25 : 50,
-          height: appData.markers[position]!.type == 2 ? 25 : 50,
+          width: currentTour.markers[position]!.type == 2 ? 25 : 50,
+          height: currentTour.markers[position]!.type == 2 ? 25 : 50,
         );
 
     return Scaffold(
@@ -108,7 +113,7 @@ class MapScreen extends StatelessWidget {
           'Travel Tales',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color.fromRGBO(223, 255, 255, 1),
+        backgroundColor: MAIN_COLOR,
         centerTitle: true,
       ),
       body: Stack(
@@ -129,19 +134,19 @@ class MapScreen extends StatelessWidget {
                 tileProvider: CancellableNetworkTileProvider(),
                 //urlTemplate:
                 urlTemplate:
-                    'https://tile.jawg.io/jawg-terrain/{z}/{x}/{y}{r}.png?access-token=$ACCESS_TOKEN',
+                    'https://tile.jawg.io/jawg-terrain/{z}/{x}/{y}.png?access-token=$ACCESS_TOKEN',
                 // 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
                 // 'https://maps.geoapify.com/v1/tile/osm-bright-smooth/{z}/{x}/{y}.png?apiKey=$GEOAPIFY_API_KEY',
                 userAgentPackageName: 'com.example.app',
               ),
               PolylineLayer(
-                polylines: appData.routes
+                polylines: currentTour.routes
                     .map((route) => route.coordinates)
                     .map(createPolyline)
                     .toList(),
               ),
               MarkerLayer(
-                markers: appData.ordering.map(createMarker).toList(),
+                markers: currentTour.ordering.map(createMarker).toList(),
               ),
               if (locationService.currentLocation != null)
                 MarkerLayer(
@@ -164,15 +169,19 @@ class MapScreen extends StatelessWidget {
             const Center(child: CircularProgressIndicator()),
         ],
       ),
-      backgroundColor: const Color.fromRGBO(223, 255, 255, 1),
+      backgroundColor: MAIN_COLOR,
       persistentFooterButtons: [
         IconButton(
-          onPressed: () {
+          onPressed: () async {
             if (locationService.currentLocation == null) {
               locationService.checkPermissions(context, true);
-              return;
+              locationService.currentLocation =
+                  await locationService.getLocation();
             }
-            mapController.move(locationService.currentLocation!, 12);
+
+            if (locationService.currentLocation != null) {
+              mapController.move(locationService.currentLocation!, 12);
+            }
           },
           icon: const Icon(Icons.my_location),
         ),
@@ -184,11 +193,7 @@ class MapScreen extends StatelessWidget {
           onPressed: () {
             showDialog(
               context: context,
-              builder: (ctx) => SettingsDialog(
-                loadFromPrefs: () => appLogic.loadData(),
-                saveToPrefs: () => appLogic.saveData(),
-                appData: appData,
-              ),
+              builder: (context) => SettingsDialog(),
             );
           },
           icon: const Icon(Icons.settings),

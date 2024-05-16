@@ -9,7 +9,7 @@ const List<String> ASSET_FILES_FOR_TYPES = [
   'assets/dot.png'
 ];
 
-class MarkerData {
+class Marker {
   final LatLng position;
   String name;
   String description;
@@ -20,7 +20,7 @@ class MarkerData {
   int type;
   List<File> pics;
 
-  MarkerData(
+  Marker(
     this.position,
     this.name,
     this.description,
@@ -40,16 +40,16 @@ class MarkerData {
         'pics': pics.map((file) => file.path).toList(),
       };
 
-  static MarkerData fromMap(Map<String, dynamic> data) => MarkerData(
+  static Marker fromMap(Map<String, dynamic> data) => Marker(
         pointFromString(data['location']),
         data['name'],
         data['description'],
         DateTime.parse(data['date']),
         data['type'],
-        (data['pics'] as List<String>).map((path) => File(path)).toList(),
+        List<String>.from(data['pics']).map((path) => File(path)).toList(),
       );
 
-  static MarkerData empty(LatLng position) => MarkerData(
+  static Marker empty(LatLng position) => Marker(
         position,
         "No Name",
         "",
