@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:helloworld/picture_carousel.dart';
-import 'package:helloworld/marker_data.dart';
+import 'package:helloworld/data/marker_data.dart';
 
 class MarkerDialog extends StatefulWidget {
   final LatLng position;
@@ -28,19 +28,29 @@ class MarkerDialog extends StatefulWidget {
 }
 
 class _MarkerDialogState extends State<MarkerDialog> {
-  late TextEditingController _descriptionController;
+  late TextEditingController descriptionController;
+  late TextEditingController dateController;
 
   @override
   void initState() {
     super.initState();
-    _descriptionController =
+    descriptionController =
         TextEditingController(text: widget.markerData.description);
+    dateController =
+        TextEditingController(text: widget.markerData.dateOfVisit.toString());
   }
 
   @override
   void dispose() {
-    _descriptionController.dispose();
+    descriptionController.dispose();
     super.dispose();
+  }
+
+  void changeDate(DateTime value) {
+    setState(() {
+      widget.markerData.dateOfVisit = value;
+    });
+    widget.onUpdate(widget.markerData);
   }
 
   void changeName(String value) {
@@ -95,6 +105,27 @@ class _MarkerDialogState extends State<MarkerDialog> {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          TextField(
+              controller: dateController, //editing controller of this TextField
+              decoration: const InputDecoration(
+                icon: Icon(Icons.calendar_today), //icon of text field
+                hintText: "Enter Date", //label text of field
+                hintStyle: TextStyle(color: Colors.grey),
+              ),
+              readOnly: true, // when true user cannot edit text
+              onTap: () async {
+                //when click we have to show the datepicker
+                DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(), //get today's date
+                    firstDate: DateTime(
+                        2000), //DateTime.now() - not to allow to choose before today.
+                    lastDate: DateTime(2101));
+                if (pickedDate != null) {
+                  changeDate(pickedDate);
+                }
+              }),
+
           if (widget.markerData.type != 2)
             TextField(
               maxLines: null,
@@ -103,13 +134,14 @@ class _MarkerDialogState extends State<MarkerDialog> {
                 hintText: 'Description',
                 hintStyle: TextStyle(color: Colors.grey),
               ),
-              controller: _descriptionController,
+              controller: descriptionController,
               onChanged: (text) => changeDescription(text),
             ),
-          PictureCarousel(
-            pics: widget.markerData.pics,
-            onPicRemove: (file) => removePicture(file),
-          ),
+          if (widget.markerData.type != 2)
+            PictureCarousel(
+              pics: widget.markerData.pics,
+              onPicRemove: (file) => removePicture(file),
+            ),
           Text(
               'Loc: (${widget.position.latitude.toStringAsFixed(2)}, ${widget.position.longitude.toStringAsFixed(2)})'),
           // TODO display dateOfVisit (with a selector for the correct date when clicked)
@@ -120,21 +152,25 @@ class _MarkerDialogState extends State<MarkerDialog> {
           onPressed: () => changeType(),
           icon: Image.asset(
             widget.markerData.assetFileForType,
-            width: 40,
-            height: 40,
+            width: 30,
+            height: 30,
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.add_to_photos),
+          icon: Image.asset('assets/pics.png', width: 30, height: 30),
           onPressed: () => pickImages(),
         ),
         IconButton(
-          icon: const Icon(Icons.delete),
+          icon: Image.asset('assets/bin.png', width: 30, height: 30),
           onPressed: () => widget.onDelete(),
         ),
         IconButton(
           // Insert after button. Once pressed, then the next markers will be inserted after this marker in the route
-          icon: const Icon(Icons.arrow_right_rounded),
+          icon: Image.asset(
+            'assets/insert_after.png',
+            width: 30,
+            height: 30,
+          ),
           onPressed: () => widget.onSelectAfter(),
         ),
       ],

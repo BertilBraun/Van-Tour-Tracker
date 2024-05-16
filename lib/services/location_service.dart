@@ -3,16 +3,31 @@ import 'package:location/location.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 
-class LocationService {
+class LocationService extends ChangeNotifier {
   final Location location = Location();
   Stream<LatLng>? locationStream;
+  LatLng? previousLocation;
+  LatLng? currentLocation;
 
-  Future<void> _checkPermissions(BuildContext context) async {
+  LocationService(BuildContext context) {
+    startListening((loc) {
+      previousLocation = currentLocation;
+      currentLocation = loc;
+      notifyListeners();
+    }, context);
+  }
+
+  Future<void> checkPermissions(BuildContext context, bool showPopup) async {
+    print('Checking Permission');
+
     bool serviceEnabled = await location.serviceEnabled();
     if (!serviceEnabled) {
       serviceEnabled = await location.requestService();
       if (!serviceEnabled) {
-        showLocationServiceDialog(context);
+        if (showPopup) {
+          _showLocationServiceDialog(context);
+        }
+        print('Service not enabled');
         return; // Exit if location services are not enabled even after prompt.
       }
     }
@@ -22,7 +37,10 @@ class LocationService {
       permission = await location.requestPermission();
       if (permission != PermissionStatus.granted &&
           permission != PermissionStatus.grantedLimited) {
-        showPermissionRequestDialog(context);
+        if (showPopup) {
+          _showPermissionRequestDialog(context);
+        }
+        print('Permissions not granted');
         return; // Exit if permissions are not granted.
       }
     }
@@ -30,7 +48,7 @@ class LocationService {
 
   void startListening(Function(LatLng) onUpdate, BuildContext context) async {
     // Ensure that location service is enabled and permissions are granted.
-    await _checkPermissions(context);
+    await checkPermissions(context, false);
 
     locationStream = location.onLocationChanged.map((locationData) {
       if (locationData.latitude != null && locationData.longitude != null) {
@@ -50,7 +68,13 @@ class LocationService {
     locationStream?.listen(null).cancel(); // Stop listening to location changes
   }
 
-  void showLocationServiceDialog(BuildContext context) {
+  @override
+  void dispose() {
+    stopListening();
+    super.dispose();
+  }
+
+  void _showLocationServiceDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -68,7 +92,7 @@ class LocationService {
               child: const Text("Settings"),
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
-                openLocationSettings();
+                _openLocationSettings();
               },
             ),
           ],
@@ -77,7 +101,7 @@ class LocationService {
     );
   }
 
-  void showPermissionRequestDialog(BuildContext context) {
+  void _showPermissionRequestDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -96,7 +120,7 @@ class LocationService {
               child: const Text("Settings"),
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
-                openAppSettings();
+                _openAppSettings();
               },
             ),
           ],
@@ -105,13 +129,13 @@ class LocationService {
     );
   }
 
-  void openAppSettings() async {
+  void _openAppSettings() async {
     if (!await launchUrl(Uri.parse('app-settings:'))) {
       print('Could not open the app settings.');
     }
   }
 
-  void openLocationSettings() async {
+  void _openLocationSettings() async {
     if (!await launchUrl(Uri.parse('package:settings'))) {
       print('Could not open the location settings.');
     }
