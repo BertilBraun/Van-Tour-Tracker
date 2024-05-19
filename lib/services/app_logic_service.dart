@@ -7,6 +7,7 @@ import 'package:helloworld/data/tour.dart';
 import 'package:helloworld/data/route.dart';
 
 import 'package:helloworld/services/routing_service.dart';
+import 'package:helloworld/services/export_to_canva.dart';
 
 class AppLogicService extends ChangeNotifier {
   CurrentState currentState = CurrentState.empty();
@@ -14,6 +15,7 @@ class AppLogicService extends ChangeNotifier {
   Tour currentTour = Tour.empty();
   int markerInsertIndex = -1;
   bool isFetchingRoute = false;
+  bool hasMovedToLocationOnceAlready = false;
 
   AppLogicService() {
     loadData();
@@ -78,14 +80,11 @@ class AppLogicService extends ChangeNotifier {
     }
   }
 
-  Future<void> exportToCanva() async {
-    // TODO export to something like canva with print ready
-    // Calculate Bounding Box for each day, zoom map to fit, make screenshot, add statistics like traveled distance on that day, summarize all the descriptions and points of the markers on that day
-    // Then generate a double page with all that data for the day
-    // Generate some printable format with all the pages of the days
-    //
-    // Maybe use GPT to generate a nice description for each day
-    // Maybe use some generative art to create a cover
+  Future<void> exportToCanva() => Exporter(currentTour).exportTour();
+
+  void hasMovedToLocation() {
+    hasMovedToLocationOnceAlready = true;
+    notifyListeners();
   }
 
   void _afterAppDataUpdate() {

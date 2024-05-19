@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:helloworld/data/tour.dart';
 import 'package:helloworld/services/app_logic_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:file_picker/file_picker.dart';
 
 class SettingsDialog extends StatelessWidget {
   late AppLogicService appLogic;
@@ -23,19 +22,9 @@ class SettingsDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextButton.icon(
-            onPressed: () => onImport(),
-            icon: const Icon(Icons.publish),
-            label: const Text("Import"),
-          ),
-          TextButton.icon(
             onPressed: () => onExport(),
             icon: const Icon(Icons.ios_share),
             label: const Text("Export"),
-          ),
-          TextButton.icon(
-            onPressed: () => onDeleteAll(),
-            icon: const Icon(Icons.delete),
-            label: const Text("Delete all Entries"),
           ),
           const SizedBox(height: 8),
           const Text('All your saved Tours'),
@@ -49,7 +38,7 @@ class SettingsDialog extends StatelessWidget {
                               border: InputBorder.none,
                               labelText: tourName,
                             ),
-                            onChanged: (value) =>
+                            onSubmitted: (value) =>
                                 onChangeTourName(tourName, value),
                           ),
                         ),
@@ -79,38 +68,11 @@ class SettingsDialog extends StatelessWidget {
     );
   }
 
-  Future<void> onImport() async {
-    final files = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Select the Save File',
-      allowedExtensions: ['json'],
-    );
-
-    if (files != null && files.count > 0) {
-      final jsonData = await File(files.paths[0]!).readAsString();
-      final allData = jsonDecode(jsonData);
-      await Tour.fromMap(allData).save();
-      await appLogic.loadData();
-    }
-  }
-
   Future<void> onExport() async {
     final allData = appLogic.currentTour.toMap();
     final jsonData = jsonEncode(allData);
 
-    String? outputFile = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save Your File to desired location',
-      fileName: 'export.json',
-    );
-
-    if (outputFile != null) {
-      await File(outputFile).writeAsString(jsonData);
-    }
-  }
-
-  Future<void> onDeleteAll() async {
-    appLogic.currentTour = Tour.empty();
-    await appLogic.saveData();
-    await appLogic.loadData();
+    await Clipboard.setData(ClipboardData(text: jsonData));
   }
 
   String _getSaveName() {
@@ -145,13 +107,25 @@ class SettingsDialog extends StatelessWidget {
   }
 
   Future<void> onChangeTourName(String oldName, String newName) async {
+    // rename in currentState.allTourNames
     int index = appLogic.currentState.allTourNames.indexOf(oldName);
     appLogic.currentState.allTourNames[index] = newName;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(newName, prefs.getString(oldName)!);
-    await prefs.setString(oldName, ''); // delete the old tour json data
+    // rename currentTourName if applicable
+    if (oldName == appLogic.currentState.currentTourName) {
+      appLogic.currentState.currentTourName = newName;
+    }
 
+    // load the tour, rename it and save it under its new name
+    final tour = await Tour.load(oldName);
+    tour.name = newName;
+    await tour.save();
+
+    // delete the old tour json data
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(oldName, '');
+
+    // update app logic with new state and tour
     await appLogic.saveData();
     await appLogic.loadData();
   }

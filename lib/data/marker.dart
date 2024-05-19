@@ -16,7 +16,7 @@ class Marker {
   DateTime dateOfVisit;
   // 0 = Heart
   // 1 = Sleep
-  // 2 = dot
+  // 2 = Stopover
   int type;
   List<File> pics;
 
@@ -30,6 +30,10 @@ class Marker {
   );
 
   String get assetFileForType => ASSET_FILES_FOR_TYPES[type];
+  bool get isStopover => type == 2;
+
+  DateTime get dateOnlyOfVisit =>
+      DateTime(dateOfVisit.year, dateOfVisit.month, dateOfVisit.day);
 
   Map<String, dynamic> toMap() => {
         'location': pointToString(position),

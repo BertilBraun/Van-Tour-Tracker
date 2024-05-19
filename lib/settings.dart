@@ -7,3 +7,4 @@ const String OPEN_ROUTE_SERVICE_API_KEY =
 const String ACCESS_TOKEN =
     'I9vHNbh1Z8eWb5WKeGPYl4mBKohmYYoDYDvLBHf2UiXgZZed7Lk5OVkQrAVzP7iW';
 const Color MAIN_COLOR = Color.fromRGBO(223, 255, 255, 1);
+const Color ROUTE_COLOR = Color.fromARGB(255, 74, 46, 0);

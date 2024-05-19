@@ -43,15 +43,25 @@ class _MarkerDialogState extends State<MarkerDialog> {
   @override
   void dispose() {
     descriptionController.dispose();
+    dateController.dispose();
     super.dispose();
   }
 
-  void changeDate(DateTime value) {
-    setState(() {
-      widget.marker.dateOfVisit = value;
-      dateController.text = widget.marker.dateOfVisit.toString().split(' ')[0];
-    });
-    widget.onUpdate(widget.marker);
+  void changeDate() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        widget.marker.dateOfVisit = pickedDate;
+        dateController.text = pickedDate.toString().split(' ')[0];
+      });
+      widget.onUpdate(widget.marker);
+    }
   }
 
   void changeName(String value) {
@@ -93,66 +103,58 @@ class _MarkerDialogState extends State<MarkerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    List<Widget> columnChildren = [];
+    if (!widget.marker.isStopover) {
+      columnChildren = [
+        TextField(
+          maxLines: 4,
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            hintText: 'Description',
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
+          controller: descriptionController,
+          onChanged: (text) => changeDescription(text),
+        ),
+        const Spacer(),
+        PictureCarousel(
+          pics: widget.marker.pics,
+          onPicRemove: (file) => removePicture(file),
+        ),
+        const Spacer(),
+        TextField(
+          controller: dateController,
+          decoration: const InputDecoration(
+            icon: Icon(Icons.calendar_today),
+            border: InputBorder.none,
+            hintText: "Enter Date",
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
+          readOnly: true,
+          onTap: () => changeDate(),
+        ),
+        const SizedBox(height: 10),
+      ];
+    } else {
+      columnChildren.add(const Spacer());
+    }
+    columnChildren.add(Text(
+      'Loc: (${widget.position.latitude.toStringAsFixed(4)}, ${widget.position.longitude.toStringAsFixed(4)})',
+    ));
+
     return AlertDialog(
       title: TextField(
         decoration: InputDecoration(
-            border: InputBorder.none,
-            labelText:
-                widget.marker.type == 2 ? 'Stopover' : widget.marker.name,
-            enabled: widget.marker.type != 2,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold)),
+          border: InputBorder.none,
+          labelText: widget.marker.isStopover ? 'Stopover' : widget.marker.name,
+          enabled: !widget.marker.isStopover,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         onChanged: (value) => changeName(value),
       ),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.marker.type != 2)
-            TextField(
-              maxLines: 4,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Description',
-                hintStyle: TextStyle(color: Colors.grey),
-              ),
-              controller: descriptionController,
-              onChanged: (text) => changeDescription(text),
-            ),
-
-          const Spacer(), // <-- Set height
-          if (widget.marker.type != 2)
-            PictureCarousel(
-              pics: widget.marker.pics,
-              onPicRemove: (file) => removePicture(file),
-            ),
-          const Spacer(),
-          TextField(
-              controller: dateController, //editing controller of this TextField
-              decoration: const InputDecoration(
-                icon: Icon(Icons.calendar_today), //icon of text field
-                border: InputBorder.none,
-                hintText: "Enter Date", //label text of field
-                hintStyle: TextStyle(color: Colors.grey),
-              ),
-              readOnly: true, // when true user cannot edit text
-              onTap: () async {
-                //when click we have to show the datepicker
-                DateTime? pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(), //get today's date
-                    firstDate: DateTime(
-                        2000), //DateTime.now() - not to allow to choose before today.
-                    lastDate: DateTime.now());
-                if (pickedDate != null) {
-                  changeDate(pickedDate);
-                }
-              }),
-          const SizedBox(
-            height: 10,
-          ),
-          Text(
-              'Loc: (${widget.position.latitude.toStringAsFixed(2)}, ${widget.position.longitude.toStringAsFixed(2)})'),
-          // TODO display dateOfVisit (with a selector for the correct date when clicked)
-        ],
+        children: columnChildren,
       ),
       actions: [
         IconButton(
@@ -163,12 +165,29 @@ class _MarkerDialogState extends State<MarkerDialog> {
             height: 30,
           ),
         ),
-        IconButton(
-          icon: Image.asset('assets/pics.png', width: 30, height: 30),
-          onPressed: () => pickImages(),
+        Stack(
+          alignment: AlignmentDirectional.center,
+          children: [
+            IconButton(
+              icon: Image.asset(
+                'assets/pics.png',
+                width: 30,
+                height: 30,
+              ),
+              onPressed: () {
+                if (!widget.marker.isStopover) pickImages();
+              },
+            ),
+            if (widget.marker.isStopover)
+              const Icon(Icons.close, size: 40, color: Colors.red),
+          ],
         ),
         IconButton(
-          icon: Image.asset('assets/bin.png', width: 30, height: 30),
+          icon: Image.asset(
+            'assets/bin.png',
+            width: 30,
+            height: 30,
+          ),
           onPressed: () => widget.onDelete(),
         ),
         IconButton(
