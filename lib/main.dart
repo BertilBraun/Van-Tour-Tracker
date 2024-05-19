@@ -27,37 +27,25 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AppLogicService appLogic = context.watch<AppLogicService>();
-    final LocationService locationService = context.watch<LocationService>();
-
     return MaterialApp(
       title: 'Travel Tales',
-      home: MapScreen(
-        currentTour: appLogic.currentTour,
-        appLogic: appLogic,
-        locationService: locationService,
-      ),
+      home: MapScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class MapScreen extends StatelessWidget {
-  final Tour currentTour;
-  final AppLogicService appLogic;
-  final LocationService locationService;
-
-  MapScreen({
-    super.key,
-    required this.currentTour,
-    required this.appLogic,
-    required this.locationService,
-  });
+  MapScreen({super.key});
 
   final MapController mapController = MapController();
 
   @override
   Widget build(BuildContext context) {
+    final AppLogicService appLogic = context.watch<AppLogicService>();
+    final LocationService locationService = context.watch<LocationService>();
+    final Tour currentTour = appLogic.currentTour;
+
     if (!appLogic.hasMovedToLocationOnceAlready &&
         locationService.currentLocation != null) {
       // If we just now found a location, then zoom the map to that location
