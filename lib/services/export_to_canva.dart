@@ -240,6 +240,7 @@ class Exporter {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.none,
                     ),
                   ),
                   const SizedBox(height: 20),
