@@ -2,9 +2,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart'
-    show Colors, Container, BuildContext, showDialog, Navigator, Center;
-import 'package:flutter_map/flutter_map.dart' show LatLngBounds, MapController;
+import 'package:flutter/material.dart' hide Route;
+import 'package:flutter_map/flutter_map.dart' show LatLngBounds;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:screenshot/screenshot.dart';
@@ -163,6 +162,7 @@ class Exporter {
     List<Route> dailyRoutes,
   ) async {
     final Uint8List imageBytes = await _createScreenshot(
+      date,
       dailyMarkers,
       allRoutes,
       dailyRoutes,
@@ -177,12 +177,12 @@ class Exporter {
   }
 
   Future<Uint8List> _createScreenshot(
+    DateTime date,
     List<Marker> dailyMarkers,
     List<Route> allRoutes,
     List<Route> dailyRoutes,
   ) async {
     const MAP_SIZE = (2000.0, 2000.0);
-    final (MAP_WIDTH, MAP_HEIGHT) = MAP_SIZE;
 
     final List<LatLng> allPointsOfTheDay = dailyRoutes
         .map((route) => route.coordinates)
@@ -207,7 +207,6 @@ class Exporter {
       initialZoom: zoom,
     );
 
-    final MapController mapController = MapController();
     final ScreenshotController screenshotController = ScreenshotController();
 
     showDialog(
@@ -215,14 +214,40 @@ class Exporter {
       barrierDismissible: false,
       useSafeArea: false,
       builder: (context) => Center(
-        child: Screenshot(
-          controller: screenshotController,
-          child: Container(
-            width: MAP_WIDTH,
-            height: MAP_HEIGHT,
-            color: Colors.red,
-            child: mapWidget,
-          ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Screenshot(
+                controller: screenshotController,
+                child: mapWidget,
+              ),
+            ),
+            // Transparent overlay to grey out the background
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.black.withOpacity(0.2),
+            ),
+            // Progress text
+            Positioned.fill(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Please Wait...\n\nCurrently processing ${dateToString(date)}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const CircularProgressIndicator(),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
