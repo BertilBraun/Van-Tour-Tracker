@@ -3,8 +3,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import 'package:helloworld/settings.dart';
-import 'package:helloworld/marker_dialog.dart';
-import 'package:helloworld/settings_dialog.dart';
+import 'package:helloworld/dialogs/marker_dialog.dart';
+import 'package:helloworld/dialogs/settings_dialog.dart';
 
 import 'package:helloworld/data/tour.dart';
 
