@@ -17,13 +17,16 @@ Shows your tracked route on the map with heart markers indicating points of inte
 
 ![Map View](docs/images/Map%20View.png)
 
-### Day 1 Route
-Route details and distance traveled on the first day.
+### Exported Route
+Route details and distance traveled on the different days.
+
+![Route Export](docs/images/Export.jpeg)
+
+Route traveled on the first day:
 
 ![Day 1 Route](docs/images/Export%20Tour%20Day%201.jpeg)
 
-### Day 2 Route
-Route details and distance traveled on the second day.
+Route traveled on the second day.
 
 ![Day 2 Route](docs/images/Export%20Tour%20Day%202.jpeg)
 
