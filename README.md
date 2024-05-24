@@ -1,19 +1,51 @@
-# Hello World
+# Travel Tales
 
-A new Flutter project created with FlutLab - https://flutlab.io
+Travel Tales is a Flutter application designed to help you track your holiday trips using a band. It allows you to create markers at points of interest and automatically calculates the route between these points. At the end of your journey, you can export the routes and images from each day.
 
-## Getting Started
+## Features
 
-A few resources to get you started if this is your first Flutter project:
+- **Track Your Trip**: Create markers at each location you visit, and the app will calculate the route between these points automatically.
+- **Live Location**: Keep track of your current location in real-time, which is useful when you are on the go.
+- **Markers**: Customize each marker with a name, description, and pictures. The date and location are set automatically but can be adjusted manually.
+- **Daily Routes**: Automatically generate images of the routes you traveled each day.
+- **Export**: Compile a detailed description of your holiday, including pictures of the routes and export it to your gallery.
 
-- https://flutter.dev/docs/get-started/codelab
-- https://flutter.dev/docs/cookbook
+## Screenshots
 
-For help getting started with Flutter, view our
-https://flutter.dev/docs, which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Map View
+Shows your tracked route on the map with heart markers indicating points of interest.
 
-## Getting Started: FlutLab - Flutter Online IDE
+![Map View](docs/images/Map%20View.png)
 
-- How to use FlutLab? Please, view our https://flutlab.io/docs
-- Join the discussion and conversation on https://flutlab.io/residents
+### Day 1 Route
+Route details and distance traveled on the first day.
+
+![Day 1 Route](docs/images/Export%20Tour%20Day%201.jpeg)
+
+### Day 2 Route
+Route details and distance traveled on the second day.
+
+![Day 2 Route](docs/images/Export%20Tour%20Day%202.jpeg)
+
+### Marker Dialog
+Add details to each marker, including name, description, and photos.
+
+![Marker Dialog](docs/images/Marker%20Dialog.png)
+
+### Multiple Tours
+Manage and switch between different tours.
+
+![Multiple Tours](docs/images/Multiple%20Tours.png)
+
+## How to Use
+
+1. **Start a New Tour**: Begin tracking your trip by creating a new tour.
+2. **Add Markers**: As you travel, add markers at each location you visit.
+3. **View Routes**: Check the map view to see the routes between your markers.
+4. **Customize Markers**: Add names, descriptions, and photos to your markers.
+5. **Live Location Tracking**: Use the live location feature to keep track of your journey in real-time.
+6. **Export**: When your trip is over, use the export feature to save a detailed description of your trip, including the routes and photos, to your gallery.
+
+## Download
+
+You can download the latest version of the app from the [Releases](https://github.com/BertilBraun/Van-Tour-Tracker/releases) section.
