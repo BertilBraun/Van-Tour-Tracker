@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_map/flutter_map.dart';
 
 import 'package:helloworld/settings.dart';
 import 'package:helloworld/marker_dialog.dart';
@@ -27,7 +26,7 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'Travel Tales',
       home: MapScreen(),
       debugShowCheckedModeBanner: false,
@@ -36,9 +35,7 @@ class MainApp extends StatelessWidget {
 }
 
 class MapScreen extends StatelessWidget {
-  MapScreen({super.key});
-
-  final MapController mapController = MapController();
+  const MapScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -49,10 +46,7 @@ class MapScreen extends StatelessWidget {
     if (!appLogic.hasMovedToLocationOnceAlready &&
         locationService.currentLocation != null) {
       // If we just now found a location, then zoom the map to that location
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        mapController.move(locationService.currentLocation!, 12);
-        appLogic.hasMovedToLocation();
-      });
+      appLogic.moveToLocation(locationService.currentLocation!);
     }
 
     void showMarker(LatLng position) => showDialog(
@@ -99,7 +93,7 @@ class MapScreen extends StatelessWidget {
                       1.0, // MapCamera.of(context).zoom < 9 ? 0.5 : 1.0,
                 )),
             onTap: (pos) => appLogic.addMarker(pos),
-            mapController: mapController,
+            mapController: appLogic.mapController,
             currentLocation: locationService.currentLocation,
           ),
           if (appLogic.isFetchingRoute)
@@ -120,14 +114,14 @@ class MapScreen extends StatelessWidget {
                 }
 
                 if (locationService.currentLocation != null) {
-                  mapController.move(locationService.currentLocation!, 12);
+                  appLogic.moveToLocation(locationService.currentLocation!);
                 }
               },
               icon: const Icon(Icons.my_location),
             ),
             IconButton(
               onPressed: () => appLogic
-                  .exportToCanva()
+                  .exportToCanva(context)
                   .then((value) => showDialog(
                       context: context,
                       builder: (context) => AlertDialog(

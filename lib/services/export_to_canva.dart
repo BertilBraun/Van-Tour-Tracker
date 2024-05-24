@@ -2,8 +2,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Colors, Container, Size;
-import 'package:flutter_map/flutter_map.dart' show LatLngBounds;
+import 'package:flutter/material.dart'
+    show Colors, Container, BuildContext, showDialog, Navigator, Center;
+import 'package:flutter_map/flutter_map.dart' show LatLngBounds, MapController;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:screenshot/screenshot.dart';
@@ -38,17 +39,27 @@ class DayExport {
 class Exporter {
   final Tour currentTour;
   final Map<DateTime, List<Marker>> markersByDate = {};
+  final BuildContext context;
 
-  Exporter(this.currentTour) {
+  Exporter(this.currentTour, this.context) {
     _populateMarkersByDate();
   }
 
   Future<String> exportTour() async {
-    // extracts all the days in markersByDate in parallel and compile the final document
-    final Iterable<Future<DayExport>> pageFutures =
-        markersByDate.keys.map(_extractDay);
+    // extracts all the days in markersByDate and compile the final document
 
-    final List<DayExport> pages = await Future.wait(pageFutures);
+    // NOTE: in parallel is no longer possible, as the extraction requires to show a dialog, therefore the days have to be processed one by one
+    // final Iterable<Future<DayExport>> pageFutures =
+    //     markersByDate.keys.map(_extractDay);
+    // final List<DayExport> pages = await Future.wait(pageFutures);
+
+    final List<DateTime> dates = markersByDate.keys.toList();
+    dates.sort((a, b) => a.compareTo(b));
+
+    List<DayExport> pages = [];
+    for (final date in dates) {
+      pages.add(await _extractDay(date));
+    }
 
     // Compile all pages into a final document
     return await _compileFinalDocument(pages);
@@ -175,7 +186,7 @@ class Exporter {
 
     final List<LatLng> allPointsOfTheDay = dailyRoutes
         .map((route) => route.coordinates)
-        .reduce((list, coords) => list + coords)
+        .reduce((all, coords) => all + coords)
         .toList();
     final LatLngBounds bounds = LatLngBounds.fromPoints(allPointsOfTheDay);
     final double zoom = _calculateZoomLevel(bounds, MAP_SIZE);
@@ -188,30 +199,45 @@ class Exporter {
         .map((route) => createPolyline(route.coordinates, ROUTE_COLOR))
         .toList();
 
-    final mapWidget = Container(
-      width: MAP_WIDTH,
-      height: MAP_HEIGHT,
-      color: Colors.red,
-      child: MapWidget(
-        markers: dailyMarkers.map((marker) => createMarker(marker, () {})),
-        polylines: notDailyPolylines + dailyPolylines,
-        onTap: (pos) {},
-        initialCenter: bounds.center,
-        initialZoom: zoom,
+    final mapWidget = MapWidget(
+      markers: dailyMarkers.map((marker) => createMarker(marker, () {})),
+      polylines: notDailyPolylines + dailyPolylines,
+      onTap: (pos) {},
+      initialCenter: bounds.center,
+      initialZoom: zoom,
+    );
+
+    final MapController mapController = MapController();
+    final ScreenshotController screenshotController = ScreenshotController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useSafeArea: false,
+      builder: (context) => Center(
+        child: Screenshot(
+          controller: screenshotController,
+          child: Container(
+            width: MAP_WIDTH,
+            height: MAP_HEIGHT,
+            color: Colors.red,
+            child: mapWidget,
+          ),
+        ),
       ),
     );
 
-    Uint8List imageBytes = await ScreenshotController().captureFromWidget(
-      mapWidget,
-      delay: const Duration(seconds: 1), // Add delay to allow map tiles to load
-      targetSize: Size(MAP_WIDTH, MAP_HEIGHT),
+    final imageBytes = await screenshotController.capture(
+      delay: const Duration(seconds: 1),
     );
 
-    return imageBytes;
+    Navigator.pop(context);
+
+    return imageBytes!;
   }
 
   double _calculateZoomLevel(LatLngBounds bounds, (double, double) mapSize) {
-    const double WORLD_DIM = 256; // Default tile size in pixels
+    const double WORLD_DIM = 2048; // Default tile size in pixels
     const double ZOOM_MAX = 21; // Maximum zoom level
 
     double latRad(double lat) {

@@ -57,7 +57,7 @@ class MapWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return FlutterMap(
       options: MapOptions(
-        minZoom: 7,
+        minZoom: 4,
         initialCenter: initialCenter,
         initialZoom: initialZoom,
         onTap: (_, pos) => onTap(pos),

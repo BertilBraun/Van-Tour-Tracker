@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show BuildContext;
 import 'package:helloworld/data/current_state.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart' show MapController;
 
 import 'package:helloworld/data/marker.dart';
 import 'package:helloworld/data/tour.dart';
@@ -11,6 +13,8 @@ import 'package:helloworld/services/export_to_canva.dart';
 
 class AppLogicService extends ChangeNotifier {
   CurrentState currentState = CurrentState.empty();
+
+  final MapController mapController = MapController();
 
   Tour currentTour = Tour.empty();
   int markerInsertIndex = -1;
@@ -80,9 +84,11 @@ class AppLogicService extends ChangeNotifier {
     }
   }
 
-  Future<String> exportToCanva() => Exporter(currentTour).exportTour();
+  Future<String> exportToCanva(BuildContext context) =>
+      Exporter(currentTour, context).exportTour();
 
-  void hasMovedToLocation() {
+  void moveToLocation(LatLng currentLocation, {double zoom = 12}) {
+    mapController.move(currentLocation, zoom);
     hasMovedToLocationOnceAlready = true;
     notifyListeners();
   }
