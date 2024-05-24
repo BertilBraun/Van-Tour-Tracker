@@ -31,5 +31,9 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "permissions": [
+       "clipboardRead",
+       "clipboardWrite"
+     ]
 }

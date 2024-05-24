@@ -80,7 +80,7 @@ class AppLogicService extends ChangeNotifier {
     }
   }
 
-  Future<void> exportToCanva() => Exporter(currentTour).exportTour();
+  Future<String> exportToCanva() => Exporter(currentTour).exportTour();
 
   void hasMovedToLocation() {
     hasMovedToLocationOnceAlready = true;

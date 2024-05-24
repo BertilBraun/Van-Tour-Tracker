@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class LocationService extends ChangeNotifier {
   StreamSubscription? locationStream;
@@ -150,13 +149,13 @@ class LocationService extends ChangeNotifier {
   }
 
   void _openAppSettings() async {
-    if (!await launchUrl(Uri.parse('app-settings:'))) {
+    if (!await Geolocator.openAppSettings()) {
       print('Could not open the app settings.');
     }
   }
 
   void _openLocationSettings() async {
-    if (!await launchUrl(Uri.parse('package:settings'))) {
+    if (!await Geolocator.openLocationSettings()) {
       print('Could not open the location settings.');
     }
   }

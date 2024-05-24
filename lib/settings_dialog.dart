@@ -21,12 +21,6 @@ class SettingsDialog extends StatelessWidget {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton.icon(
-            onPressed: () => onExport(),
-            icon: const Icon(Icons.ios_share),
-            label: const Text("Export"),
-          ),
-          const SizedBox(height: 8),
           const Text('All your saved Tours'),
           Column(
             children: appLogic.currentState.allTourNames
@@ -53,7 +47,16 @@ class SettingsDialog extends StatelessWidget {
                             icon: const Icon(Icons.delete),
                           ),
                         if (tourName == appLogic.currentState.currentTourName)
-                          const Icon(Icons.stay_current_portrait)
+                          IconButton(
+                            onPressed: () => onExport(),
+                            icon: const Icon(Icons.ios_share),
+                          ),
+                        if (tourName == appLogic.currentState.currentTourName)
+                          const IconButton(
+                            onPressed: null,
+                            icon: Icon(Icons.stay_current_portrait),
+                            disabledColor: Colors.black,
+                          ),
                       ],
                     ))
                 .toList(),
@@ -82,8 +85,8 @@ class SettingsDialog extends StatelessWidget {
 
     for (int i = 1; i < 1000; i++) {
       if (!appLogic.currentState.allTourNames
-          .contains(Tour.DEFAULT_SAVE_NAME + i.toString())) {
-        return Tour.DEFAULT_SAVE_NAME + i.toString();
+          .contains('${Tour.DEFAULT_SAVE_NAME} $i')) {
+        return '${Tour.DEFAULT_SAVE_NAME} $i';
       }
     }
 

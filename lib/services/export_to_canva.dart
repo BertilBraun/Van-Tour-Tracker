@@ -1,10 +1,11 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' as mat;
-import 'package:flutter_map/flutter_map.dart' as map;
+import 'package:flutter/material.dart' show Colors, Container, Size;
+import 'package:flutter_map/flutter_map.dart' show LatLngBounds;
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 
 import 'package:helloworld/settings.dart';
@@ -12,6 +13,7 @@ import 'package:helloworld/widgets/map.dart';
 import 'package:helloworld/data/marker.dart';
 import 'package:helloworld/data/tour.dart';
 import 'package:helloworld/data/route.dart';
+import 'package:helloworld/load_and_save_util.dart';
 
 class DayExport {
   final DateTime date;
@@ -27,6 +29,10 @@ class DayExport {
     this.routeImage,
     this.markers,
   );
+
+  @override
+  String toString() => 'Amount of Markers:$amountOfMarkers\n'
+      'Distance: $distance\n';
 }
 
 class Exporter {
@@ -35,6 +41,17 @@ class Exporter {
 
   Exporter(this.currentTour) {
     _populateMarkersByDate();
+  }
+
+  Future<String> exportTour() async {
+    // extracts all the days in markersByDate in parallel and compile the final document
+    final Iterable<Future<DayExport>> pageFutures =
+        markersByDate.keys.map(_extractDay);
+
+    final List<DayExport> pages = await Future.wait(pageFutures);
+
+    // Compile all pages into a final document
+    return await _compileFinalDocument(pages);
   }
 
   void _populateMarkersByDate() {
@@ -85,18 +102,7 @@ class Exporter {
     }
   }
 
-  Future<void> exportTour() async {
-    // extracts all the days in markersByDate in parallel and compile the final document
-    final Iterable<Future<DayExport>> pageFutures =
-        markersByDate.keys.map(extractDay);
-
-    final List<DayExport> pages = await Future.wait(pageFutures);
-
-    // Compile all pages into a final document
-    await _compileFinalDocument(pages);
-  }
-
-  Future<DayExport> extractDay(DateTime date) async {
+  Future<DayExport> _extractDay(DateTime date) async {
     final List<Marker> dailyMarkers = markersByDate[date]!;
     final List<Route> dailyRoutes =
         _calculateDailyRoutes(currentTour.routes, dailyMarkers);
@@ -123,13 +129,12 @@ class Exporter {
   List<Route> _calculateDailyRoutes(
     List<Route> allRoutes,
     List<Marker> dailyMarkers,
-  ) {
-    // A route is of a given day, if it was reached as the destination at that day
-    return allRoutes
-        .where((route) =>
-            dailyMarkers.any((marker) => marker.position == route.destination))
-        .toList();
-  }
+  ) =>
+      // A route is of a given day, if it was reached as the destination at that day
+      allRoutes
+          .where((route) => dailyMarkers
+              .any((marker) => marker.position == route.destination))
+          .toList();
 
   // Calculate total distance for the day
   double _calculateTotalDistance(List<Route> dailyRoutes) {
@@ -146,19 +151,18 @@ class Exporter {
     List<Route> allRoutes,
     List<Route> dailyRoutes,
   ) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final imagePath = '${directory.path}/screenshot_day_$date.png';
-
-    final imageBytes = await _createScreenshot(
+    final Uint8List imageBytes = await _createScreenshot(
       dailyMarkers,
       allRoutes,
       dailyRoutes,
     );
 
-    final File imageFile = File(imagePath);
-    await imageFile.writeAsBytes(imageBytes);
+    final result = await ImageGallerySaver.saveImage(
+      imageBytes,
+      name: 'screenshot_day_${dateToString(date)}',
+    );
 
-    return imageFile;
+    return File(result['filePath']!);
   }
 
   Future<Uint8List> _createScreenshot(
@@ -166,40 +170,73 @@ class Exporter {
     List<Route> allRoutes,
     List<Route> dailyRoutes,
   ) async {
+    const MAP_SIZE = (2000.0, 2000.0);
+    final (MAP_WIDTH, MAP_HEIGHT) = MAP_SIZE;
+
     final List<LatLng> allPointsOfTheDay = dailyRoutes
         .map((route) => route.coordinates)
         .reduce((list, coords) => list + coords)
         .toList();
+    final LatLngBounds bounds = LatLngBounds.fromPoints(allPointsOfTheDay);
+    final double zoom = _calculateZoomLevel(bounds, MAP_SIZE);
 
-    final map.CenterZoom centerZoom = map.MapController()
-        .centerZoomFitBounds(map.LatLngBounds.fromPoints(allPointsOfTheDay));
-
-    final List<map.Polyline> notDailyPolylines = allRoutes
+    final notDailyPolylines = allRoutes
         .where((route) => !dailyRoutes.contains(route))
-        .map((route) => createPolyline(route.coordinates, mat.Colors.grey))
+        .map((route) => createPolyline(route.coordinates, Colors.grey))
         .toList();
-    final List<map.Polyline> dailyPolylines = dailyRoutes
+    final dailyPolylines = dailyRoutes
         .map((route) => createPolyline(route.coordinates, ROUTE_COLOR))
         .toList();
 
-    final mapWidget = MapWidget(
-      markers: dailyMarkers.map((marker) => createMarker(marker, () {})),
-      polylines: notDailyPolylines + dailyPolylines,
-      onTap: (pos) {},
-      initialCenter: centerZoom.center,
-      initialZoom: centerZoom.zoom,
+    final mapWidget = Container(
+      width: MAP_WIDTH,
+      height: MAP_HEIGHT,
+      color: Colors.red,
+      child: MapWidget(
+        markers: dailyMarkers.map((marker) => createMarker(marker, () {})),
+        polylines: notDailyPolylines + dailyPolylines,
+        onTap: (pos) {},
+        initialCenter: bounds.center,
+        initialZoom: zoom,
+      ),
     );
 
     Uint8List imageBytes = await ScreenshotController().captureFromWidget(
       mapWidget,
       delay: const Duration(seconds: 1), // Add delay to allow map tiles to load
+      targetSize: Size(MAP_WIDTH, MAP_HEIGHT),
     );
 
     return imageBytes;
   }
 
+  double _calculateZoomLevel(LatLngBounds bounds, (double, double) mapSize) {
+    const double WORLD_DIM = 256; // Default tile size in pixels
+    const double ZOOM_MAX = 21; // Maximum zoom level
+
+    double latRad(double lat) {
+      double sinLat = sin(lat * pi / 180);
+      double radX2 = log((1 + sinLat) / (1 - sinLat)) / 2;
+      return max(min(radX2, pi), -pi) / 2;
+    }
+
+    double zoom(double mapPx, double worldPx, double fraction) {
+      return (log(mapPx / worldPx / fraction) / ln2).clamp(0, ZOOM_MAX);
+    }
+
+    double latFraction = (latRad(bounds.north) - latRad(bounds.south)) / pi;
+    double lngFraction = ((bounds.east - bounds.west) + 360) % 360 / 360;
+
+    final (mapWidth, mapHeight) = mapSize;
+
+    double latZoom = zoom(mapHeight, WORLD_DIM, latFraction);
+    double lngZoom = zoom(mapWidth, WORLD_DIM, lngFraction);
+
+    return min(latZoom, lngZoom);
+  }
+
   // Compile all daily pages into a final document
-  Future<void> _compileFinalDocument(List<DayExport> pages) async {
+  Future<String> _compileFinalDocument(List<DayExport> pages) async {
     // TODO export to something like canva with print ready
     //
     // Then generate a double page with all that data for the day
@@ -210,19 +247,26 @@ class Exporter {
 
     pages.sort((a, b) => a.date.compareTo(b.date));
 
-    final double totalDistance =
-        pages.map((day) => day.distance).reduce((sum, dist) => sum + dist);
+    final int totalDistance = pages
+        .map((day) => day.distance)
+        .reduce((sum, dist) => sum + dist)
+        .floor();
     final DateTime startDay = pages.first.date;
     final DateTime endDay = pages.last.date;
-    final int durationInDays = endDay.difference(startDay).inDays;
+    final int durationInDays = endDay.difference(startDay).inDays + 1;
 
-    print('Started on $startDay');
-    print('Ended on $endDay');
-    print('Traveled for $durationInDays days');
-    print('With a total distance of $totalDistance');
+    StringBuffer buffer = StringBuffer();
+
+    buffer.write('Started on ${dateToString(startDay)}\n');
+    buffer.write('Ended on ${dateToString(endDay)}\n');
+    buffer.write('Traveled for $durationInDays days\n');
+    buffer.write('With a total distance of $totalDistance meters\n');
 
     for (int i = 0; i < pages.length; i++) {
-      print('Day ${i + 1} (${pages[i].date}): ${pages[i]}');
+      buffer.write(
+          'Day ${i + 1} (${dateToString(pages[i].date)}): ${pages[i]}\n\n');
     }
+
+    return buffer.toString();
   }
 }

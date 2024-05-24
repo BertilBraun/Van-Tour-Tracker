@@ -48,14 +48,6 @@ class PictureCarousel extends StatelessWidget {
                             ),
                             padding: EdgeInsets.symmetric(
                                 vertical: 10.0, horizontal: 20.0),
-                            child: Text(
-                              'No. ${pics.indexOf(item)} image',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           ),
                         ),
                         IconButton(

@@ -95,7 +95,8 @@ class MapScreen extends StatelessWidget {
             markers: currentTour.markers.keys.map((position) => createMarker(
                   currentTour.markers[position]!,
                   () => showMarker(position),
-                  sizeScaling: MapCamera.of(context).zoom < 9 ? 0.5 : 1.0,
+                  sizeScaling:
+                      1.0, // MapCamera.of(context).zoom < 9 ? 0.5 : 1.0,
                 )),
             onTap: (pos) => appLogic.addMarker(pos),
             mapController: mapController,
@@ -106,35 +107,50 @@ class MapScreen extends StatelessWidget {
         ],
       ),
       backgroundColor: MAIN_COLOR,
-      persistentFooterAlignment: AlignmentDirectional.bottomCenter,
       persistentFooterButtons: [
-        IconButton(
-          onPressed: () async {
-            if (locationService.currentLocation == null) {
-              locationService.checkPermissions(context, true);
-              locationService.currentLocation =
-                  await locationService.getLocation();
-            }
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              onPressed: () async {
+                if (locationService.currentLocation == null) {
+                  locationService.checkPermissions(context, true);
+                  locationService.currentLocation =
+                      await locationService.getLocation();
+                }
 
-            if (locationService.currentLocation != null) {
-              mapController.move(locationService.currentLocation!, 12);
-            }
-          },
-          icon: const Icon(Icons.my_location),
-        ),
-        IconButton(
-          onPressed: () => appLogic.exportToCanva(),
-          icon: const Icon(Icons.print),
-        ),
-        IconButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => SettingsDialog(),
-            );
-          },
-          icon: const Icon(Icons.settings),
-        ),
+                if (locationService.currentLocation != null) {
+                  mapController.move(locationService.currentLocation!, 12);
+                }
+              },
+              icon: const Icon(Icons.my_location),
+            ),
+            IconButton(
+              onPressed: () => appLogic
+                  .exportToCanva()
+                  .then((value) => showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                          content: SingleChildScrollView(child: Text(value)))))
+                  .onError((error, stackTrace) => showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                          content: SingleChildScrollView(
+                              child: Text(
+                                  'Error: $error\n\nStacktrace: $stackTrace'))))),
+              icon: const Icon(Icons.print),
+            ),
+            IconButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => SettingsDialog(),
+                );
+              },
+              icon: const Icon(Icons.settings),
+            ),
+          ],
+        )
       ],
     );
   }

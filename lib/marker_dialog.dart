@@ -135,12 +135,7 @@ class _MarkerDialogState extends State<MarkerDialog> {
         ),
         const SizedBox(height: 10),
       ];
-    } else {
-      columnChildren.add(const Spacer());
     }
-    columnChildren.add(Text(
-      'Loc: (${widget.position.latitude.toStringAsFixed(4)}, ${widget.position.longitude.toStringAsFixed(4)})',
-    ));
 
     return AlertDialog(
       title: TextField(
@@ -154,33 +149,29 @@ class _MarkerDialogState extends State<MarkerDialog> {
       ),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: columnChildren,
+        children: columnChildren +
+            [
+              Text(
+                'Loc: (${widget.position.latitude.toStringAsFixed(4)}, ${widget.position.longitude.toStringAsFixed(4)})',
+              )
+            ],
       ),
       actions: [
         IconButton(
-          onPressed: () => changeType(),
           icon: Image.asset(
             widget.marker.assetFileForType,
             width: 30,
             height: 30,
           ),
+          onPressed: () => changeType(),
         ),
-        Stack(
-          alignment: AlignmentDirectional.center,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                'assets/pics.png',
-                width: 30,
-                height: 30,
-              ),
-              onPressed: () {
-                if (!widget.marker.isStopover) pickImages();
-              },
-            ),
-            if (widget.marker.isStopover)
-              const Icon(Icons.close, size: 40, color: Colors.red),
-          ],
+        IconButton(
+          icon: Image.asset(
+            'assets/pics.png',
+            width: 30,
+            height: 30,
+          ),
+          onPressed: (widget.marker.isStopover) ? null : () => pickImages(),
         ),
         IconButton(
           icon: Image.asset(
