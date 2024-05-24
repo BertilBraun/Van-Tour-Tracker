@@ -226,7 +226,7 @@ class Exporter {
             Container(
               width: double.infinity,
               height: double.infinity,
-              color: Colors.black.withOpacity(0.9),
+              color: Colors.black.withOpacity(0.2),
             ),
             // Progress text
             Positioned.fill(
@@ -234,8 +234,15 @@ class Exporter {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Text('Please Wait...'),
-                  Text('Currently processing ${dateToString(date)}'),
+                  Text(
+                    'Please Wait...\n\nCurrently processing ${dateToString(date)}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   const CircularProgressIndicator(),
                 ],
               ),
