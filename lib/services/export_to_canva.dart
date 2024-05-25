@@ -32,7 +32,7 @@ class DayExport {
 
   @override
   String toString() => 'Amount of Markers:$amountOfMarkers\n'
-      'Distance: $distance\n';
+      'Distance: ${(distance / 1000).toStringAsFixed(1)} km\n';
 }
 
 class Exporter {
@@ -147,7 +147,7 @@ class Exporter {
           .toList();
 
   // Calculate total distance for the day
-  double _calculateTotalDistance(List<Route> dailyRoutes) {
+  double _calculateTotalDistance(List<dynamic> dailyRoutes) {
     double totalDistance = 0.0;
     for (final route in dailyRoutes) {
       totalDistance += route.distance;
@@ -184,11 +184,16 @@ class Exporter {
   ) async {
     const MAP_SIZE = (2000.0, 2000.0);
 
-    final List<LatLng> allPointsOfTheDay = dailyRoutes
+    final List<LatLng> allRoutePointsOfTheDay = dailyRoutes
         .map((route) => route.coordinates)
         .reduce((all, coords) => all + coords)
         .toList();
-    final LatLngBounds bounds = LatLngBounds.fromPoints(allPointsOfTheDay);
+    final List<LatLng> allMarkerPointsOfTheDay =
+        dailyMarkers.map((marker) => marker.position).toList();
+
+    final LatLngBounds bounds = LatLngBounds.fromPoints(
+      allRoutePointsOfTheDay + allMarkerPointsOfTheDay,
+    );
     final double zoom = _calculateZoomLevel(bounds, MAP_SIZE);
 
     final notDailyPolylines = allRoutes
@@ -235,11 +240,12 @@ class Exporter {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'Please Wait...\n\nCurrently processing ${dateToString(date)}',
+                    'Please Wait...\n\nCurrently processing:\n${dateToString(date)}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.none,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -298,10 +304,7 @@ class Exporter {
 
     pages.sort((a, b) => a.date.compareTo(b.date));
 
-    final int totalDistance = pages
-        .map((day) => day.distance)
-        .reduce((sum, dist) => sum + dist)
-        .floor();
+    final double totalDistance = _calculateTotalDistance(pages);
     final DateTime startDay = pages.first.date;
     final DateTime endDay = pages.last.date;
     final int durationInDays = endDay.difference(startDay).inDays + 1;
@@ -311,11 +314,12 @@ class Exporter {
     buffer.write('Started on ${dateToString(startDay)}\n');
     buffer.write('Ended on ${dateToString(endDay)}\n');
     buffer.write('Traveled for $durationInDays days\n');
-    buffer.write('With a total distance of $totalDistance meters\n');
+    buffer.write(
+        'With a total distance of ${(totalDistance / 1000).toStringAsFixed(1)} km\n');
 
     for (int i = 0; i < pages.length; i++) {
       buffer.write(
-          'Day ${i + 1} (${dateToString(pages[i].date)}): ${pages[i]}\n\n');
+          'Day ${i + 1} (${dateToString(pages[i].date)}):\n${pages[i]}\n\n');
     }
 
     return buffer.toString();
